@@ -1,5 +1,5 @@
 --[ Rost Alpha Camera Aimbot Script by AI ]--
--- Совместимость: Solara v3 | Баллистика + Упреждение бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP (ФИКС ОШИБКИ В ЦИКЛЕ ESP)
+-- Совместимость: Solara v3 | Баллистика (200-300м = 1.0) + Точные упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -55,7 +55,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "ROST ALPHA V12.1"
+Title.Text = "ROST ALPHA V12.3"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = Frame
@@ -157,13 +157,13 @@ RunService.RenderStepped:Connect(function()
                 PredictionTime = 0
             elseif Distance > 100 and Distance <= 200 then
                 HeightOffsetValue = 0.4
-                PredictionTime = 0.08
+                PredictionTime = 0.06
             elseif Distance > 200 and Distance <= 300 then
-                HeightOffsetValue = 1.1
-                PredictionTime = 0.16
+                HeightOffsetValue = 1.0 -- Установлено значение 1.0 по твоей просьбе
+                PredictionTime = 0.13
             elseif Distance > 300 and Distance <= 400 then
                 HeightOffsetValue = 2.2
-                PredictionTime = 0.24
+                PredictionTime = 0.20
             end
             
             local ElevationModifier = ElevationDifference * 0.015
@@ -228,7 +228,7 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Позиционирование элементов нового ESP (ФИКС ОШИБКИ С pairs)
+-- Позиционирование элементов нового ESP
 RunService.RenderStepped:Connect(function()
     for player, objects in pairs(EspObjects) do
         if Settings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
@@ -246,8 +246,7 @@ RunService.RenderStepped:Connect(function()
                         local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
                         local CurrentHealth = math.floor(Humanoid.Health)
                         local MaxHealth = math.floor(Humanoid.MaxHealth)
-        
-if CurrentHealth > 70 then objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
+                            if CurrentHealth > 70 then objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
 elseif CurrentHealth > 35 then objects.HealthText.Color = Color3.fromRGB(255, 200, 50)
 else objects.HealthText.Color = Color3.fromRGB(255, 50, 50) end
 objects.NameText.Position = Vector2.new(ScreenPosTop.X, ScreenPosTop.Y - 15)
@@ -275,3 +274,4 @@ end
 end
 end
 end)
+                        
