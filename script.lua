@@ -1,5 +1,5 @@
 --[ Rost Alpha Camera Aimbot Script by AI ]--
--- Совместимость: Solara v3 | ФИКС КРАША NIL VALUE + NO RECOIL / NO SHAKE + Баллистика + Упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
+-- Совместимость: Solara v3 | Автовыстрел на F10 (до 500м) + Inf Jump + NO RECOIL + Баллистика + ПРОДВИНУТЫЙ ESP
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -16,10 +16,11 @@ local Settings = {
     FovRadius = 150,
     EspEnabled = false,
     FullbrightEnabled = false,
+    TriggerEnabled = false, -- Автовыстрел (TriggerBot)
+    InfJumpEnabled = false,
     UiVisible = true
 }
 
--- Переменная для фиксации угла камеры (No Recoil)
 local LastCameraRotation = Camera.CFrame.Rotation
 
 -- Оригинальные настройки освещения
@@ -38,14 +39,14 @@ FovCircle.Radius = Settings.FovRadius
 FovCircle.Filled = false
 FovCircle.Visible = false
 
--- Создание UI (Защита интерфейса переписана специально под Solara v3)
+-- Создание UI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RostAlphaV13Gui"
+ScreenGui.Name = "RostAlphaV14Gui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 180, 0, 200)
+Frame.Size = UDim2.new(0, 180, 0, 280) -- Увеличил высоту под новые кнопки
 Frame.Position = UDim2.new(0, 10, 0, 10)
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
@@ -57,10 +58,12 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "ROST ALPHA V13.1"
+Title.Text = "ROST ALPHA V14.1"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = Frame
+
+local Toggles = {}
 
 local function CreateToggle(name, pos, settingName, callback)
     local Btn = Instance.new("TextButton")
@@ -73,8 +76,7 @@ local function CreateToggle(name, pos, settingName, callback)
     Btn.TextSize = 14
     Btn.Parent = Frame
 
-    Btn.MouseButton1Click:Connect(function()
-        Settings[settingName] = not Settings[settingName]
+    local function UpdateVisual()
         if Settings[settingName] then
             Btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             Btn.Text = name .. ": ON"
@@ -82,24 +84,46 @@ local function CreateToggle(name, pos, settingName, callback)
             Btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             Btn.Text = name .. ": OFF"
         end
+    end
+
+    Btn.MouseButton1Click:Connect(function()
+        Settings[settingName] = not Settings[settingName]
+        UpdateVisual()
         if callback then callback(Settings[settingName]) end
     end)
+
+    Toggles[settingName] = UpdateVisual
 end
 
 CreateToggle("1. Aim Bot", UDim2.new(0, 10, 0, 40), "AimbotEnabled")
 CreateToggle("2. Aim FOV", UDim2.new(0, 10, 0, 80), "FovEnabled", function(val) FovCircle.Visible = val end)
 CreateToggle("3. ESP Info", UDim2.new(0, 10, 0, 120), "EspEnabled")
 CreateToggle("4. Fullbright", UDim2.new(0, 10, 0, 160), "FullbrightEnabled")
+CreateToggle("5. Trigger [F10]", UDim2.new(0, 10, 0, 200), "TriggerEnabled")
+CreateToggle("6. Inf Jump", UDim2.new(0, 10, 0, 240), "InfJumpEnabled")
 
+-- Отслеживание горячих клавиш (Right Shift и F10)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightShift then
-        Settings.UiVisible = not Settings.UiVisible
-        Frame.Visible = Settings.UiVisible
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            Settings.UiVisible = not Settings.UiVisible
+            Frame.Visible = Settings.UiVisible
+        elseif input.KeyCode == Enum.KeyCode.F10 then
+            Settings.TriggerEnabled = not Settings.TriggerEnabled
+            if Toggles["TriggerEnabled"] then Toggles["TriggerEnabled"]() end
+        end
+    end
+end)
+
+-- Логика Infinite Jump (Бесконечный прыжок)
+UserInputService.JumpRequest:Connect(function()
+    if Settings.InfJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
     end
 end)
 
 -- Функция поиска ближайшего игрока
-local function GetClosestPlayer()
+local function GetClosestPlayer(maxDist)
     local ClosestTarget = nil
     local MaxFovDistance = Settings.FovRadius
 
@@ -116,7 +140,7 @@ local function GetClosestPlayer()
             local TargetPos = player.Character.HumanoidRootPart.Position
             local DistanceBetween = (MyPos - TargetPos).Magnitude
 
-            if DistanceBetween <= Settings.MaxDistance then
+            if DistanceBetween <= maxDist then
                 local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetHead.Position)
                 if OnScreen then
                     local MousePos = UserInputService:GetMouseLocation()
@@ -133,7 +157,14 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
--- Основной цикл работы аимбота, фуллбрайта и антиотдачи
+-- Функция симуляции левого клика мыши (Выстрел)
+local function FireWeapon()
+    mouse1press()
+    task.wait(0.02)
+    mouse1release()
+end
+
+-- Основной цикл работы (Аимбот, Автовыстрел, Антиотдача, Фуллбрайт)
 RunService.RenderStepped:Connect(function()
     if Settings.FovEnabled then
         FovCircle.Position = UserInputService:GetMouseLocation()
@@ -142,8 +173,9 @@ RunService.RenderStepped:Connect(function()
 
     local IsAiming = Settings.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
 
+    -- 1. ЛОГИКА АИМБОТА (До 400 метров по нажатию RMB)
     if IsAiming then
-        local Target = GetClosestPlayer()
+        local Target = GetClosestPlayer(Settings.MaxDistance)
         if Target and Target.Character and Target.Character:FindFirstChild("Head") and Target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             
             local Head = Target.Character.Head
@@ -178,80 +210,106 @@ RunService.RenderStepped:Connect(function()
             
             local FinalTargetPosition = Head.Position + FinalHeightOffset + MovementOffset
             
-            -- Наведение на цель
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
             LastCameraRotation = Camera.CFrame.Rotation
         else
-            -- Блокировка отдачи/тряски, если цель потеряна, но кнопка зажата
             Camera.CFrame = CFrame.new(Camera.CFrame.Position) * LastCameraRotation
         end
     else
-        -- Запоминаем последнее положение камеры, когда не целимся
         LastCameraRotation = Camera.CFrame.Rotation
     end
 
-    if Settings.FullbrightEnabled then
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-    else
-        Lighting.Ambient = OrigAmbient
-        Lighting.OutdoorAmbient = OrigOutdoorAmbient
-        Lighting.Brightness = OrigBrightness
-        Lighting.ClockTime = OrigClockTime
-        Lighting.GlobalShadows = OrigGlobalShadows
-    end
+    -- 2. ЛОГИКА АВТОВЫСТРЕЛА / TRIGGERBOT (До 500 метров при включенном режиме)
+    if Settings.TriggerEnabled and not IsAiming then
+        -- Ищет цели вплоть до 500 метров в FOV круге
+        local Target = GetClosestPlayer(500)
+        if Target and Target.Character and Target.Character:FindFirstChild("Head") and Target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            
+            local Head = Target.Character.Head
+            local RootPart = Target.Character.HumanoidRootPart
+            local MyPos = LocalPlayer.Character.HumanoidRootPart.Position
+            local Distance = (MyPos - RootPart.Position).Magnitude
+            local ElevationDifference = Head.Position.Y - MyPos.Y
+            
+            local HeightOffsetValue = 0
+            local PredictionTime = 0
+            
+            -- Дополнительный 5-й шаг баллистики специально для дистанции 400-500м
+            if Distance <= 100 then
+                HeightOffsetValue = 0; PredictionTime = 0
+            elseif Distance > 100 and Distance <= 200 then
+                HeightOffsetValue = 0.4; PredictionTime = 0.06
+            elseif Distance > 200 and Distance <= 300 then
+                HeightOffsetValue = 1.0; PredictionTime = 0.13
+            elseif Distance > 300 and Distance <= 400 then
+                HeightOffsetValue = 2.2; PredictionTime = 0.20
+            elseif Distance > 400 and Distance <= 500 then
+HeightOffsetValue = 3.5 -- Повышенная баллистика для сверхдальних
+PredictionTime = 0.26   -- Увеличенное упреждение бега
+end
+local ElevationModifier = ElevationDifference * 0.015
+local FinalHeightOffset = Vector3.new(0, HeightOffsetValue + ElevationModifier, 0)
+local MovementOffset = RootPart.Velocity * PredictionTime
+local FinalTargetPosition = Head.Position + FinalHeightOffset + MovementOffset
+-- Мгновенная автоматическая доводка и выстрел
+Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
+task.spawn(FireWeapon)
+end
+end
+-- 3. ЛОГИКА FULLBRIGHT
+if Settings.FullbrightEnabled then
+Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+Lighting.Brightness = 2
+Lighting.ClockTime = 14
+Lighting.GlobalShadows = false
+else
+Lighting.Ambient = OrigAmbient
+Lighting.OutdoorAmbient = OrigOutdoorAmbient
+Lighting.Brightness = OrigBrightness
+Lighting.ClockTime = OrigClockTime
+Lighting.GlobalShadows = OrigGlobalShadows
+end
 end)
-
 -- Хранилище объектов для продвинутого раздельного ESP
 local EspObjects = {}
-
 local function CreateEsp(player)
-    local Objects = {
-        NameText = Drawing.new("Text"),
-        HealthText = Drawing.new("Text"),
-        DistText = Drawing.new("Text")
-    }
-    
-    for _, text in pairs(Objects) do
-        text.Center = true
-        text.Outline = true
-        text.OutlineColor = Color3.fromRGB(0, 0, 0)
-        text.Visible = false
-    end
-    
-    Objects.NameText.Color = Color3.fromRGB(255, 255, 255)
-    Objects.NameText.Size = 15
-    Objects.HealthText.Size = 14
-    Objects.DistText.Color = Color3.fromRGB(255, 255, 100)
-    Objects.DistText.Size = 14
-
-    EspObjects[player] = Objects
+local Objects = {
+NameText = Drawing.new("Text"),
+HealthText = Drawing.new("Text"),
+DistText = Drawing.new("Text")
+}
+for _, text in pairs(Objects) do
+text.Center = true
+text.Outline = true
+text.OutlineColor = Color3.fromRGB(0, 0, 0)
+text.Visible = false
 end
-
+Objects.NameText.Color = Color3.fromRGB(255, 255, 255)
+Objects.NameText.Size = 15
+Objects.HealthText.Size = 14
+Objects.DistText.Color = Color3.fromRGB(255, 255, 100)
+Objects.DistText.Size = 14
+EspObjects[player] = Objects
+end
 for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then CreateEsp(p) end end
 Players.PlayerAdded:Connect(CreateEsp)
 Players.PlayerRemoving:Connect(function(player)
-    if EspObjects[player] then
-        for _, text in pairs(EspObjects[player]) do text:Remove() end
-        EspObjects[player] = nil
-    end
+if EspObjects[player] then
+for _, text in pairs(EspObjects[player]) do text:Remove() end
+EspObjects[player] = nil
+end
 end)
-
 -- Позиционирование элементов нового ESP
 RunService.RenderStepped:Connect(function()
-    for player, objects in pairs(EspObjects) do
-        if Settings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
-            local Humanoid = player.Character.Humanoid
-            
-            if Humanoid.Health > 0 then
-                local Head = player.Character:FindFirstChild("Head")
-                local Root = player.Character:FindFirstChild("HumanoidRootPart")
-                
-                if Head and Root then
-                    local ScreenPosTop, OnScreenTop = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 2.5, 0))
+for player, objects in pairs(EspObjects) do
+if Settings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+local Humanoid = player.Character.Humanoid
+if Humanoid.Health > 0 then
+local Head = player.Character:FindFirstChild("Head")
+local Root = player.Character:FindFirstChild("HumanoidRootPart")
+if Head and Root then
+local ScreenPosTop, OnScreenTop = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 2.5, 0))
 local ScreenPosBottom, OnScreenBottom = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, -3.5, 0))
 if OnScreenTop and OnScreenBottom then
 local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
