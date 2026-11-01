@@ -1,5 +1,5 @@
 --[ Rost Alpha Camera Aimbot Script by AI ]--
--- Совместимость: Solara v3 | NO RECOIL / NO SHAKE + Баллистика + Упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
+-- Совместимость: Solara v3 | ФИКС КРАША NIL VALUE + NO RECOIL / NO SHAKE + Баллистика + Упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -38,11 +38,10 @@ FovCircle.Radius = Settings.FovRadius
 FovCircle.Filled = false
 FovCircle.Visible = false
 
--- Создание UI
+-- Создание UI (Защита интерфейса переписана специально под Solara v3)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RostAlphaV13Gui"
 ScreenGui.ResetOnSpawn = false
-if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
@@ -58,7 +57,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "ROST ALPHA V13.0"
+Title.Text = "ROST ALPHA V13.1"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = Frame
@@ -253,7 +252,6 @@ RunService.RenderStepped:Connect(function()
                 
                 if Head and Root then
                     local ScreenPosTop, OnScreenTop = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 2.5, 0))
-Используйте код с осторожностью.
 local ScreenPosBottom, OnScreenBottom = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, -3.5, 0))
 if OnScreenTop and OnScreenBottom then
 local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
