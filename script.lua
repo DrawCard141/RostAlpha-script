@@ -1,5 +1,5 @@
 --[ Rost Alpha Camera Aimbot Script by AI ]--
--- Совместимость: Solara v3 | Баллистика (200-300м = 1.0) + Точные упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
+-- Совместимость: Solara v3 | NO RECOIL / NO SHAKE + Баллистика + Упреждения бега + Компенсация высоты + ПРОДВИНУТЫЙ ESP
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -19,6 +19,9 @@ local Settings = {
     UiVisible = true
 }
 
+-- Переменная для фиксации угла камеры (No Recoil)
+local LastCameraRotation = Camera.CFrame.Rotation
+
 -- Оригинальные настройки освещения
 local OrigAmbient = Lighting.Ambient
 local OrigOutdoorAmbient = Lighting.OutdoorAmbient
@@ -37,7 +40,7 @@ FovCircle.Visible = false
 
 -- Создание UI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RostAlphaV12Gui"
+ScreenGui.Name = "RostAlphaV13Gui"
 ScreenGui.ResetOnSpawn = false
 if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -55,7 +58,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "ROST ALPHA V12.3"
+Title.Text = "ROST ALPHA V13.0"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = Frame
@@ -131,14 +134,16 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
--- Основной цикл работы аимбота и фуллбрайта
+-- Основной цикл работы аимбота, фуллбрайта и антиотдачи
 RunService.RenderStepped:Connect(function()
     if Settings.FovEnabled then
         FovCircle.Position = UserInputService:GetMouseLocation()
         FovCircle.Radius = Settings.FovRadius
     end
 
-    if Settings.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+    local IsAiming = Settings.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+
+    if IsAiming then
         local Target = GetClosestPlayer()
         if Target and Target.Character and Target.Character:FindFirstChild("Head") and Target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             
@@ -159,7 +164,7 @@ RunService.RenderStepped:Connect(function()
                 HeightOffsetValue = 0.4
                 PredictionTime = 0.06
             elseif Distance > 200 and Distance <= 300 then
-                HeightOffsetValue = 1.0 -- Установлено значение 1.0 по твоей просьбе
+                HeightOffsetValue = 1.0
                 PredictionTime = 0.13
             elseif Distance > 300 and Distance <= 400 then
                 HeightOffsetValue = 2.2
@@ -174,8 +179,16 @@ RunService.RenderStepped:Connect(function()
             
             local FinalTargetPosition = Head.Position + FinalHeightOffset + MovementOffset
             
+            -- Наведение на цель
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
+            LastCameraRotation = Camera.CFrame.Rotation
+        else
+            -- Блокировка отдачи/тряски, если цель потеряна, но кнопка зажата
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position) * LastCameraRotation
         end
+    else
+        -- Запоминаем последнее положение камеры, когда не целимся
+        LastCameraRotation = Camera.CFrame.Rotation
     end
 
     if Settings.FullbrightEnabled then
@@ -240,13 +253,13 @@ RunService.RenderStepped:Connect(function()
                 
                 if Head and Root then
                     local ScreenPosTop, OnScreenTop = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 2.5, 0))
-                    local ScreenPosBottom, OnScreenBottom = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, -3.5, 0))
-                    
-                    if OnScreenTop and OnScreenBottom then
-                        local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
-                        local CurrentHealth = math.floor(Humanoid.Health)
-                        local MaxHealth = math.floor(Humanoid.MaxHealth)
-                            if CurrentHealth > 70 then objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
+Используйте код с осторожностью.
+local ScreenPosBottom, OnScreenBottom = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, -3.5, 0))
+if OnScreenTop and OnScreenBottom then
+local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
+local CurrentHealth = math.floor(Humanoid.Health)
+local MaxHealth = math.floor(Humanoid.MaxHealth)
+if CurrentHealth > 70 then objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
 elseif CurrentHealth > 35 then objects.HealthText.Color = Color3.fromRGB(255, 200, 50)
 else objects.HealthText.Color = Color3.fromRGB(255, 50, 50) end
 objects.NameText.Position = Vector2.new(ScreenPosTop.X, ScreenPosTop.Y - 15)
@@ -274,4 +287,3 @@ end
 end
 end
 end)
-                        
