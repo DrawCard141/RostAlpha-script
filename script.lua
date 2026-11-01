@@ -1,5 +1,5 @@
 --[ Rost Alpha Camera Aimbot Script by AI ]--
--- Совместимость: Solara v3 | Автовыстрел на F10 (до 500м) + Inf Jump + NO RECOIL + Баллистика + ПРОДВИНУТЫЙ ESP
+-- Совместимость: Solara v3 | ДИНАМИЧЕСКИЙ SILENT-CALC V17.3 (Точная калибровка) + Автовыстрел на F10 + Inf Jump + ПРОДВИНУТЫЙ ESP
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -11,12 +11,12 @@ local Lighting = game:GetService("Lighting")
 -- Настройки функций
 local Settings = {
     AimbotEnabled = false,
-    MaxDistance = 400,
+    MaxDistance = 500,
     FovEnabled = false,
     FovRadius = 150,
     EspEnabled = false,
     FullbrightEnabled = false,
-    TriggerEnabled = false, -- Автовыстрел (TriggerBot)
+    TriggerEnabled = false,
     InfJumpEnabled = false,
     UiVisible = true
 }
@@ -41,12 +41,12 @@ FovCircle.Visible = false
 
 -- Создание UI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RostAlphaV14Gui"
+ScreenGui.Name = "RostAlphaV17Gui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 180, 0, 280) -- Увеличил высоту под новые кнопки
+Frame.Size = UDim2.new(0, 180, 0, 280)
 Frame.Position = UDim2.new(0, 10, 0, 10)
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
@@ -58,7 +58,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "ROST ALPHA V14.1"
+Title.Text = "ROST ALPHA V17.3"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = Frame
@@ -102,7 +102,7 @@ CreateToggle("4. Fullbright", UDim2.new(0, 10, 0, 160), "FullbrightEnabled")
 CreateToggle("5. Trigger [F10]", UDim2.new(0, 10, 0, 200), "TriggerEnabled")
 CreateToggle("6. Inf Jump", UDim2.new(0, 10, 0, 240), "InfJumpEnabled")
 
--- Отслеживание горячих клавиш (Right Shift и F10)
+-- Горячие клавиши
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed then
         if input.KeyCode == Enum.KeyCode.RightShift then
@@ -115,7 +115,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Логика Infinite Jump (Бесконечный прыжок)
+-- Бесконечный прыжок
 UserInputService.JumpRequest:Connect(function()
     if Settings.InfJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
@@ -157,14 +157,14 @@ local function GetClosestPlayer(maxDist)
     return ClosestTarget
 end
 
--- Функция симуляции левого клика мыши (Выстрел)
+-- Клик мыши
 local function FireWeapon()
     mouse1press()
     task.wait(0.02)
     mouse1release()
 end
 
--- Основной цикл работы (Аимбот, Автовыстрел, Антиотдача, Фуллбрайт)
+-- Основной цикл работы
 RunService.RenderStepped:Connect(function()
     if Settings.FovEnabled then
         FovCircle.Position = UserInputService:GetMouseLocation()
@@ -173,7 +173,7 @@ RunService.RenderStepped:Connect(function()
 
     local IsAiming = Settings.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
 
-    -- 1. ЛОГИКА АИМБОТА (До 400 метров по нажатию RMB)
+    -- 1. ДИНАМИЧЕСКИЙ АИМБОТ СМАРТ
     if IsAiming then
         local Target = GetClosestPlayer(Settings.MaxDistance)
         if Target and Target.Character and Target.Character:FindFirstChild("Head") and Target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -185,22 +185,9 @@ RunService.RenderStepped:Connect(function()
             local Distance = (MyPos - RootPart.Position).Magnitude
             local ElevationDifference = Head.Position.Y - MyPos.Y
             
-            local HeightOffsetValue = 0
-            local PredictionTime = 0
-            
-            if Distance <= 100 then
-                HeightOffsetValue = 0
-                PredictionTime = 0
-            elseif Distance > 100 and Distance <= 200 then
-                HeightOffsetValue = 0.4
-                PredictionTime = 0.06
-            elseif Distance > 200 and Distance <= 300 then
-                HeightOffsetValue = 1.0
-                PredictionTime = 0.13
-            elseif Distance > 300 and Distance <= 400 then
-                HeightOffsetValue = 2.2
-                PredictionTime = 0.20
-            end
+            -- Обновленные точные динамические формулы расчёта
+            local HeightOffsetValue = (Distance * Distance) * 0.000012 
+            local PredictionTime = Distance * 0.00050
             
             local ElevationModifier = ElevationDifference * 0.015
             local FinalHeightOffset = Vector3.new(0, HeightOffsetValue + ElevationModifier, 0)
@@ -213,71 +200,64 @@ RunService.RenderStepped:Connect(function()
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
             LastCameraRotation = Camera.CFrame.Rotation
         else
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position) * LastCameraRotation
+            LastCameraRotation = Camera.CFrame.Rotation
         end
     else
         LastCameraRotation = Camera.CFrame.Rotation
     end
 
-    -- 2. ЛОГИКА АВТОВЫСТРЕЛА / TRIGGERBOT (До 500 метров при включенном режиме)
+    -- 2. ДИНАМИЧЕСКИЙ АВТОВЫСТРЕЛ
     if Settings.TriggerEnabled and not IsAiming then
-        -- Ищет цели вплоть до 500 метров в FOV круге
-        local Target = GetClosestPlayer(500)
+        local Target = GetClosestPlayer(Settings.MaxDistance)
         if Target and Target.Character and Target.Character:FindFirstChild("Head") and Target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             
             local Head = Target.Character.Head
             local RootPart = Target.Character.HumanoidRootPart
             local MyPos = LocalPlayer.Character.HumanoidRootPart.Position
+            
             local Distance = (MyPos - RootPart.Position).Magnitude
             local ElevationDifference = Head.Position.Y - MyPos.Y
             
-            local HeightOffsetValue = 0
-            local PredictionTime = 0
+            local HeightOffsetValue = (Distance * Distance) * 0.000012
+            local PredictionTime = Distance * 0.00050
             
-            -- Дополнительный 5-й шаг баллистики специально для дистанции 400-500м
-            if Distance <= 100 then
-                HeightOffsetValue = 0; PredictionTime = 0
-            elseif Distance > 100 and Distance <= 200 then
-                HeightOffsetValue = 0.4; PredictionTime = 0.06
-            elseif Distance > 200 and Distance <= 300 then
-                HeightOffsetValue = 1.0; PredictionTime = 0.13
-            elseif Distance > 300 and Distance <= 400 then
-                HeightOffsetValue = 2.2; PredictionTime = 0.20
-            elseif Distance > 400 and Distance <= 500 then
-HeightOffsetValue = 3.5 -- Повышенная баллистика для сверхдальних
-PredictionTime = 0.26   -- Увеличенное упреждение бега
-end
-local ElevationModifier = ElevationDifference * 0.015
-local FinalHeightOffset = Vector3.new(0, HeightOffsetValue + ElevationModifier, 0)
-local MovementOffset = RootPart.Velocity * PredictionTime
-local FinalTargetPosition = Head.Position + FinalHeightOffset + MovementOffset
--- Мгновенная автоматическая доводка и выстрел
-Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
-task.spawn(FireWeapon)
-end
-end
--- 3. ЛОГИКА FULLBRIGHT
-if Settings.FullbrightEnabled then
-Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-Lighting.Brightness = 2
-Lighting.ClockTime = 14
-Lighting.GlobalShadows = false
-else
-Lighting.Ambient = OrigAmbient
-Lighting.OutdoorAmbient = OrigOutdoorAmbient
-Lighting.Brightness = OrigBrightness
-Lighting.ClockTime = OrigClockTime
-Lighting.GlobalShadows = OrigGlobalShadows
-end
+            local ElevationModifier = ElevationDifference * 0.015
+            local FinalHeightOffset = Vector3.new(0, HeightOffsetValue + ElevationModifier, 0)
+            
+            local TargetVelocity = RootPart.Velocity
+            local MovementOffset = TargetVelocity * PredictionTime
+            
+            local FinalTargetPosition = Head.Position + FinalHeightOffset + MovementOffset
+            
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, FinalTargetPosition)
+            task.spawn(FireWeapon)
+        end
+    end
+
+    -- ЛОГИКА LIGHTING FULLBRIGHT
+    if Settings.FullbrightEnabled then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Ambient = OrigAmbient
+        Lighting.OutdoorAmbient = OrigOutdoorAmbient
+        Lighting.Brightness = OrigBrightness
+        Lighting.ClockTime = OrigClockTime
+        Lighting.GlobalShadows = OrigGlobalShadows
+    end
 end)
--- Хранилище объектов для продвинутого раздельного ESP
+
+-- Хранилище ESP
 local EspObjects = {}
+
 local function CreateEsp(player)
-local Objects = {
-NameText = Drawing.new("Text"),
-HealthText = Drawing.new("Text"),
-DistText = Drawing.new("Text")
+    local Objects = {
+        NameText = Drawing.new("Text"),
+        HealthText = Drawing.new("Text"),
+        DistText = Drawing.new("Text")
 }
 for _, text in pairs(Objects) do
 text.Center = true
@@ -300,24 +280,28 @@ for _, text in pairs(EspObjects[player]) do text:Remove() end
 EspObjects[player] = nil
 end
 end)
--- Позиционирование элементов нового ESP
+-- Логика продвинутого ESP
 RunService.RenderStepped:Connect(function()
 for player, objects in pairs(EspObjects) do
-if Settings.EspEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
-local Humanoid = player.Character.Humanoid
-if Humanoid.Health > 0 then
-local Head = player.Character:FindFirstChild("Head")
-local Root = player.Character:FindFirstChild("HumanoidRootPart")
-if Head and Root then
+local char = player.Character
+if char and char:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+local Humanoid = char.Humanoid
+local Root = char.HumanoidRootPart
+local Head = char:FindFirstChild("Head")
+if Humanoid.Health > 0 and Head then
 local ScreenPosTop, OnScreenTop = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 2.5, 0))
 local ScreenPosBottom, OnScreenBottom = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, -3.5, 0))
-if OnScreenTop and OnScreenBottom then
+if Settings.EspEnabled and OnScreenTop and OnScreenBottom then
 local Distance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - Root.Position).Magnitude)
 local CurrentHealth = math.floor(Humanoid.Health)
 local MaxHealth = math.floor(Humanoid.MaxHealth)
-if CurrentHealth > 70 then objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
-elseif CurrentHealth > 35 then objects.HealthText.Color = Color3.fromRGB(255, 200, 50)
-else objects.HealthText.Color = Color3.fromRGB(255, 50, 50) end
+if CurrentHealth > 70 then
+objects.HealthText.Color = Color3.fromRGB(100, 255, 100)
+elseif CurrentHealth > 35 then
+objects.HealthText.Color = Color3.fromRGB(255, 200, 50)
+else
+objects.HealthText.Color = Color3.fromRGB(255, 50, 50)
+end
 objects.NameText.Position = Vector2.new(ScreenPosTop.X, ScreenPosTop.Y - 15)
 objects.NameText.Text = player.Name
 objects.NameText.Visible = true
@@ -328,10 +312,9 @@ objects.DistText.Position = Vector2.new(ScreenPosBottom.X, ScreenPosBottom.Y)
 objects.DistText.Text = string.format("[%dm.]", Distance)
 objects.DistText.Visible = true
 else
-for _, text in pairs(objects) do text.Visible = false end
-end
-else
-for _, text in pairs(objects) do text.Visible = false end
+objects.NameText.Visible = false
+objects.HealthText.Visible = false
+objects.DistText.Visible = false
 end
 else
 for _, text in pairs(objects) do text.Visible = false end
